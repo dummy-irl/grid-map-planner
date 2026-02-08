@@ -1,5 +1,4 @@
 # Grid Map Planner
-
 A simple grid-based map
 
 ## Demo
