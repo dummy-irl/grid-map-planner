@@ -21,15 +21,15 @@ const placedPieces = new Map();
 let pieceIdSeq = 1;
 
 // drag state
+let drag = null;
 // drag = {
 //   source: "sidebar" | "placed",
 //   id: string | null,
 //   pr, pc,
 //   ghostEl,
 //   offsetX, offsetY,
-//   original: { r, c }
+//   original: { r, c } | null
 // }
-let drag = null;
 
 createMainBtn.addEventListener("click", createMainGrid);
 addPieceBtn.addEventListener("click", addPiece);
@@ -68,14 +68,32 @@ function addPiece() {
   const item = document.createElement("div");
   item.className = "pieceItem";
 
+  // header with label + remove button
+  const header = document.createElement("div");
+  header.className = "pieceHeader";
+
+  const label = document.createElement("div");
+  label.textContent = `${pr}×${pc}`;
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "removeBtn";
+  removeBtn.type = "button";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    item.remove();
+  });
+
+  header.appendChild(label);
+  header.appendChild(removeBtn);
+
+  // piece grid
   const pieceGrid = document.createElement("div");
   pieceGrid.className = "pieceGrid";
   pieceGrid.dataset.pr = String(pr);
   pieceGrid.dataset.pc = String(pc);
-
   pieceGrid.style.gridTemplateColumns = `repeat(${pc}, ${CELL_SIZE}px)`;
 
-  // sidebar piece cells (same cell style)
   for (let r = 0; r < pr; r++) {
     for (let c = 0; c < pc; c++) {
       const cell = document.createElement("div");
@@ -84,15 +102,20 @@ function addPiece() {
     }
   }
 
+  // drag from sidebar
   pieceGrid.addEventListener("pointerdown", (e) => {
     startDragFromSidebar(e, pr, pc);
   });
 
+  item.appendChild(header);
   item.appendChild(pieceGrid);
   pieceList.prepend(item);
 }
 
 function startDragFromSidebar(e, pr, pc) {
+  // if user clicked a button, do not drag
+  if (e.target && e.target.closest && e.target.closest("button")) return;
+
   e.preventDefault();
 
   const ghostEl = createGhost(pr, pc);
@@ -112,12 +135,14 @@ function startDragFromSidebar(e, pr, pc) {
 }
 
 function startDragPlaced(e, id) {
+  // if user clicked remove button, do not drag
+  if (e.target && e.target.closest && e.target.closest("button")) return;
+
   e.preventDefault();
 
   const p = placedPieces.get(id);
   if (!p) return;
 
-  // pointer offset inside the rectangle (so it doesn't jump)
   const rect = p.el.getBoundingClientRect();
   const offsetX = e.clientX - rect.left;
   const offsetY = e.clientY - rect.top;
@@ -180,14 +205,13 @@ function onDragEnd(e) {
     const p = placedPieces.get(id);
 
     if (ok) {
-      // move piece
       p.r = r;
       p.c = c;
       p.el.style.left = `${c * CELL_SIZE}px`;
       p.el.style.top = `${r * CELL_SIZE}px`;
       setOccupancyForPiece(id, r, c, p.pr, p.pc, id);
     } else {
-      // revert piece and restore occupancy
+      // revert
       p.r = drag.original.r;
       p.c = drag.original.c;
       p.el.style.left = `${p.c * CELL_SIZE}px`;
@@ -209,13 +233,9 @@ function pointerToCell(clientX, clientY, dragState) {
   let x = clientX - rect.left;
   let y = clientY - rect.top;
 
-  // if dragging a placed piece, adjust by where the pointer grabbed it
   if (dragState && dragState.source === "placed") {
     x -= dragState.offsetX;
     y -= dragState.offsetY;
-  } else {
-    // sidebar drag: use pointer position as the top-left-ish
-    // (keeps it simple)
   }
 
   const c = Math.floor(x / CELL_SIZE);
@@ -245,6 +265,18 @@ function setOccupancyForPiece(id, r0, c0, pr, pc, value) {
   }
 }
 
+function removePlacedPiece(id) {
+  const p = placedPieces.get(id);
+  if (!p) return;
+
+  // free grid cells
+  setOccupancyForPiece(id, p.r, p.c, p.pr, p.pc, null);
+
+  // remove element + record
+  p.el.remove();
+  placedPieces.delete(id);
+}
+
 function placeNewPiece(r0, c0, pr, pc) {
   const id = `p${pieceIdSeq++}`;
 
@@ -258,6 +290,19 @@ function placeNewPiece(r0, c0, pr, pc) {
   placed.style.left = `${c0 * CELL_SIZE}px`;
   placed.style.top = `${r0 * CELL_SIZE}px`;
 
+  // remove button on the placed piece
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "removeBtn";
+  removeBtn.type = "button";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    removePlacedPiece(id);
+  });
+
+  placed.appendChild(removeBtn);
+
+  // dragging the placed piece
   placed.addEventListener("pointerdown", (e) => {
     startDragPlaced(e, id);
   });

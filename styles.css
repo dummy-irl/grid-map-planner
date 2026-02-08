@@ -106,3 +106,32 @@ input {
 .placedPiece:active {
   cursor: grabbing;
 }
+
+.removeBtn{
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 16px;
+  font-size: 14px;
+
+  background: #101010;
+  color: #50FF50;
+
+  border: 1px solid #50FF50;
+  cursor: pointer;
+}
+
+.placedPiece .removeBtn{
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+.pieceHeader{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  color: #50FF50;
+  font-size: 12px;
+}
